@@ -11,6 +11,11 @@ app.use(express.json());
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/github", require("./routes/github"));
 app.use("/api/admins", require("./routes/admins"));
+app.use("/api/overview", require("./routes/overview"));
+app.use("/api/roadmap", require("./routes/roadmap"));
+app.use("/api/plans", require("./routes/plans"));
+app.use("/api/messages", require("./routes/messages"));
+app.use("/api/integrations", require("./routes/integrations"));
 
 const PORT = process.env.PORT || 5000;
 

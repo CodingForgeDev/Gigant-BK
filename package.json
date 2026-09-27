@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "seed:roadmap": "node scripts/seedRoadmap.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
