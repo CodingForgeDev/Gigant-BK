@@ -17,7 +17,7 @@ router.post("/login", async (req, res) => {
     });
     res.json({
       token,
-      admin: { id: admin._id, email: admin.email, name: admin.name },
+      admin: { id: admin._id, email: admin.email, name: admin.name, role: admin.role },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

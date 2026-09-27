@@ -10,6 +10,7 @@ app.use(express.json());
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/github", require("./routes/github"));
+app.use("/api/admins", require("./routes/admins"));
 
 const PORT = process.env.PORT || 5000;
 
@@ -20,6 +21,7 @@ const seedAdmin = async () => {
       email: process.env.SUPER_ADMIN_EMAIL,
       password: process.env.SUPER_ADMIN_PASSWORD || "admin123",
       name: "Super Admin",
+      role: "superadmin",
       githubToken: process.env.GITHUB_TOKEN,
     });
     console.log("Super admin seeded");
