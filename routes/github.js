@@ -11,6 +11,16 @@ function getOctokit(admin) {
   return new Octokit({ auth: token });
 }
 
+router.get("/rate-limit", auth, async (req, res) => {
+  try {
+    const octokit = getOctokit(req.admin);
+    const { data } = await octokit.request("GET /rate_limit");
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get("/repos", auth, async (req, res) => {
   try {
     const octokit = getOctokit(req.admin);
@@ -215,13 +225,144 @@ router.post("/collaborators/remove-bulk", auth, async (req, res) => {
   }
 });
 
+router.delete(
+  "/repos/:owner/:repo/invitations/:invitation_id",
+  auth,
+  async (req, res) => {
+    try {
+      const octokit = getOctokit(req.admin);
+      const { owner, repo, invitation_id } = req.params;
+      await octokit.request(
+        "DELETE /repos/{owner}/{repo}/invitations/{invitation_id}",
+        { owner, repo, invitation_id: Number(invitation_id) }
+      );
+
+      await ActivityLog.create({
+        action: "revoke_invitation",
+        details: `Revoked invitation #${invitation_id} in ${owner}/${repo}`,
+        targetRepos: [`${owner}/${repo}`],
+        performedBy: req.admin._id,
+      });
+
+      res.json({ message: "Invitation revoked" });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.put(
+  "/repos/:owner/:repo/collaborators/:username",
+  auth,
+  async (req, res) => {
+    try {
+      const octokit = getOctokit(req.admin);
+      const { owner, repo, username } = req.params;
+      const { permission } = req.body;
+      await octokit.request(
+        "PUT /repos/{owner}/{repo}/collaborators/{username}",
+        { owner, repo, username, permission: permission || "push" }
+      );
+
+      await ActivityLog.create({
+        action: "add_collaborator",
+        details: `Invited ${username} to ${owner}/${repo} with ${permission || "push"} access`,
+        targetUser: username,
+        targetRepos: [`${owner}/${repo}`],
+        performedBy: req.admin._id,
+      });
+
+      res.json({ message: `Invited ${username} to ${owner}/${repo}` });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.post("/collaborators/remove-bulk-users", auth, async (req, res) => {
+  try {
+    const octokit = getOctokit(req.admin);
+    const { usernames, repos } = req.body;
+    const results = [];
+
+    for (const username of usernames) {
+      for (const repoFullName of repos) {
+        const [owner, repo] = repoFullName.split("/");
+        try {
+          await octokit.request(
+            "DELETE /repos/{owner}/{repo}/collaborators/{username}",
+            { owner, repo, username }
+          );
+          results.push({ username, repo: repoFullName, success: true });
+        } catch (err) {
+          results.push({
+            username,
+            repo: repoFullName,
+            success: false,
+            error: err.message,
+          });
+        }
+      }
+    }
+
+    await ActivityLog.create({
+      action: "remove_collaborator",
+      details: `Batch removed ${usernames.length} users from ${repos.length} repos`,
+      targetUser: usernames.join(", "),
+      targetRepos: repos,
+      performedBy: req.admin._id,
+    });
+
+    res.json({ results });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get("/activity", auth, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
+    const skip = (page - 1) * limit;
+
+    const [logs, total] = await Promise.all([
+      ActivityLog.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("performedBy", "name email"),
+      ActivityLog.countDocuments(),
+    ]);
+
+    res.json({ logs, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/activity/export", auth, async (req, res) => {
   try {
     const logs = await ActivityLog.find()
       .sort({ createdAt: -1 })
-      .limit(50)
       .populate("performedBy", "name email");
-    res.json(logs);
+
+    const header = "Date,Action,Details,Target User,Target Repos,Performed By";
+    const rows = logs.map((l) => {
+      const date = new Date(l.createdAt).toISOString();
+      const escapeCsv = (v) => `"${String(v || "").replace(/"/g, '""')}"`;
+      return [
+        date,
+        l.action,
+        escapeCsv(l.details),
+        l.targetUser || "",
+        escapeCsv((l.targetRepos || []).join("; ")),
+        l.performedBy?.name || l.performedBy?.email || "",
+      ].join(",");
+    });
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=activity-log.csv");
+    res.send([header, ...rows].join("\n"));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -7,7 +7,7 @@ const adminSchema = new mongoose.Schema(
     password: { type: String, required: true },
     name: { type: String, default: "Super Admin" },
     avatar: { data: Buffer, contentType: String },
-    role: { type: String, default: "superadmin", enum: ["superadmin"] },
+    role: { type: String, default: "admin", enum: ["superadmin", "admin"] },
     githubToken: { type: String },
   },
   { timestamps: true }
