@@ -16,6 +16,7 @@ app.use("/api/roadmap", require("./routes/roadmap"));
 app.use("/api/plans", require("./routes/plans"));
 app.use("/api/messages", require("./routes/messages"));
 app.use("/api/integrations", require("./routes/integrations"));
+app.use("/api/organizations", require("./routes/organizations"));
 
 const PORT = process.env.PORT || 5000;
 

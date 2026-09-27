@@ -1,6 +1,8 @@
 const express = require("express");
 const Message = require("../models/Message");
+const Admin = require("../models/Admin");
 const auth = require("../middleware/auth");
+const { sendContactNotification } = require("../utils/email");
 
 const router = express.Router();
 
@@ -10,6 +12,11 @@ router.post("/", async (req, res) => {
     if (!name || !email || !body)
       return res.status(400).json({ message: "name, email, and body are required" });
     const message = await Message.create({ name, email, subject, body });
+
+    Admin.findOne({ role: "superadmin" }).then((sa) => {
+      if (sa) sendContactNotification(sa.email, { name, email, subject, body }).catch(() => {});
+    });
+
     res.status(201).json({ message: "Message sent", id: message._id });
   } catch (err) {
     res.status(500).json({ message: err.message });

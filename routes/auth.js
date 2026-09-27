@@ -3,7 +3,38 @@ const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
 const auth = require("../middleware/auth");
 
+const { sendWelcomeEmail } = require("../utils/email");
+
 const router = express.Router();
+
+router.post("/register", async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    if (!email || !password) return res.status(400).json({ message: "Email and password required" });
+    if (password.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters" });
+
+    const exists = await Admin.findOne({ email: email.toLowerCase() });
+    if (exists) return res.status(409).json({ message: "Email already in use" });
+
+    const admin = await Admin.create({
+      email,
+      password,
+      name: name || email.split("@")[0],
+      role: "admin",
+    });
+
+    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+    sendWelcomeEmail(admin.email, admin.name).catch(() => {});
+
+    res.status(201).json({
+      token,
+      admin: { id: admin._id, email: admin.email, name: admin.name, role: admin.role },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 router.post("/login", async (req, res) => {
   try {
