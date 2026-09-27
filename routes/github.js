@@ -215,6 +215,100 @@ router.post("/collaborators/remove-bulk", auth, async (req, res) => {
   }
 });
 
+router.delete(
+  "/repos/:owner/:repo/invitations/:invitation_id",
+  auth,
+  async (req, res) => {
+    try {
+      const octokit = getOctokit(req.admin);
+      const { owner, repo, invitation_id } = req.params;
+      await octokit.request(
+        "DELETE /repos/{owner}/{repo}/invitations/{invitation_id}",
+        { owner, repo, invitation_id: Number(invitation_id) }
+      );
+
+      await ActivityLog.create({
+        action: "revoke_invitation",
+        details: `Revoked invitation #${invitation_id} in ${owner}/${repo}`,
+        targetRepos: [`${owner}/${repo}`],
+        performedBy: req.admin._id,
+      });
+
+      res.json({ message: "Invitation revoked" });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.put(
+  "/repos/:owner/:repo/collaborators/:username",
+  auth,
+  async (req, res) => {
+    try {
+      const octokit = getOctokit(req.admin);
+      const { owner, repo, username } = req.params;
+      const { permission } = req.body;
+      await octokit.request(
+        "PUT /repos/{owner}/{repo}/collaborators/{username}",
+        { owner, repo, username, permission: permission || "push" }
+      );
+
+      await ActivityLog.create({
+        action: "add_collaborator",
+        details: `Invited ${username} to ${owner}/${repo} with ${permission || "push"} access`,
+        targetUser: username,
+        targetRepos: [`${owner}/${repo}`],
+        performedBy: req.admin._id,
+      });
+
+      res.json({ message: `Invited ${username} to ${owner}/${repo}` });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.post("/collaborators/remove-bulk-users", auth, async (req, res) => {
+  try {
+    const octokit = getOctokit(req.admin);
+    const { usernames, repos } = req.body;
+    const results = [];
+
+    for (const username of usernames) {
+      for (const repoFullName of repos) {
+        const [owner, repo] = repoFullName.split("/");
+        try {
+          await octokit.request(
+            "DELETE /repos/{owner}/{repo}/collaborators/{username}",
+            { owner, repo, username }
+          );
+          results.push({ username, repo: repoFullName, success: true });
+        } catch (err) {
+          results.push({
+            username,
+            repo: repoFullName,
+            success: false,
+            error: err.message,
+          });
+        }
+      }
+    }
+
+    await ActivityLog.create({
+      action: "remove_collaborator",
+      details: `Batch removed ${usernames.length} users from ${repos.length} repos`,
+      targetUser: usernames.join(", "),
+      targetRepos: repos,
+      performedBy: req.admin._id,
+    });
+
+    res.json({ results });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get("/activity", auth, async (req, res) => {
   try {
     const logs = await ActivityLog.find()

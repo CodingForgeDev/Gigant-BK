@@ -5,7 +5,7 @@ const activityLogSchema = new mongoose.Schema(
     action: {
       type: String,
       required: true,
-      enum: ["remove_collaborator", "list_collaborators", "search"],
+      enum: ["remove_collaborator", "list_collaborators", "search", "revoke_invitation", "add_collaborator"],
     },
     details: { type: String },
     targetUser: { type: String },
