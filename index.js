@@ -6,7 +6,10 @@ const Admin = require("./models/Admin");
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use((req, res, next) => {
+  if (req.originalUrl === "/api/billing/webhook") return next();
+  express.json()(req, res, next);
+});
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/github", require("./routes/github"));
@@ -17,6 +20,7 @@ app.use("/api/plans", require("./routes/plans"));
 app.use("/api/messages", require("./routes/messages"));
 app.use("/api/integrations", require("./routes/integrations"));
 app.use("/api/organizations", require("./routes/organizations"));
+app.use("/api/billing", require("./routes/billing"));
 
 const PORT = process.env.PORT || 5000;
 
@@ -34,12 +38,16 @@ const seedAdmin = async () => {
   }
 };
 
-connectDB()
-  .then(seedAdmin)
-  .then(() => {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch((err) => {
-    console.error("Failed to start:", err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  connectDB()
+    .then(seedAdmin)
+    .then(() => {
+      app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    })
+    .catch((err) => {
+      console.error("Failed to start:", err);
+      process.exit(1);
+    });
+}
+
+module.exports = { app, connectDB, seedAdmin };

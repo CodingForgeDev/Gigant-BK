@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "seed:roadmap": "node scripts/seedRoadmap.js"
+    "seed:roadmap": "node scripts/seedRoadmap.js",
+    "test": "jest --forceExit --detectOpenHandles"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -15,9 +16,12 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.5",
     "nodemailer": "^10.0.11",
-    "octokit": "^4.1.2"
+    "octokit": "^4.1.2",
+    "stripe": "^22.6.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "jest": "^30.5.2",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.3.0"
   }
 }
