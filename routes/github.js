@@ -2,18 +2,28 @@ const express = require("express");
 const { Octokit } = require("octokit");
 const auth = require("../middleware/auth");
 const ActivityLog = require("../models/ActivityLog");
+const Organization = require("../models/Organization");
 
 const router = express.Router();
 
-function getOctokit(admin) {
-  const token = admin.githubToken || process.env.GITHUB_TOKEN;
+function getOctokit(admin, orgToken) {
+  const token = orgToken || admin.githubToken || process.env.GITHUB_TOKEN;
   if (!token) throw new Error("No GitHub token configured");
   return new Octokit({ auth: token });
 }
 
+async function resolveOctokit(req) {
+  const orgId = req.query.organizationId || req.body?.organizationId;
+  if (orgId) {
+    const org = await Organization.findById(orgId);
+    if (org?.githubToken) return getOctokit(req.admin, org.githubToken);
+  }
+  return getOctokit(req.admin);
+}
+
 router.get("/rate-limit", auth, async (req, res) => {
   try {
-    const octokit = getOctokit(req.admin);
+    const octokit = await resolveOctokit(req);
     const { data } = await octokit.request("GET /rate_limit");
     res.json(data);
   } catch (err) {
@@ -23,7 +33,7 @@ router.get("/rate-limit", auth, async (req, res) => {
 
 router.get("/repos", auth, async (req, res) => {
   try {
-    const octokit = getOctokit(req.admin);
+    const octokit = await resolveOctokit(req);
     const repos = await octokit.paginate("GET /user/repos", {
       per_page: 100,
       affiliation: "owner",
@@ -44,7 +54,7 @@ router.get("/repos", auth, async (req, res) => {
 
 router.get("/repos/:owner/:repo/collaborators", auth, async (req, res) => {
   try {
-    const octokit = getOctokit(req.admin);
+    const octokit = await resolveOctokit(req);
     const { owner, repo } = req.params;
     const collaborators = await octokit.paginate(
       "GET /repos/{owner}/{repo}/collaborators",
@@ -66,7 +76,7 @@ router.get("/repos/:owner/:repo/collaborators", auth, async (req, res) => {
 
 router.get("/repos/:owner/:repo/invitations", auth, async (req, res) => {
   try {
-    const octokit = getOctokit(req.admin);
+    const octokit = await resolveOctokit(req);
     const { owner, repo } = req.params;
     const invitations = await octokit.paginate(
       "GET /repos/{owner}/{repo}/invitations",
@@ -88,7 +98,7 @@ router.get("/repos/:owner/:repo/invitations", auth, async (req, res) => {
 
 router.get("/collaborators/all", auth, async (req, res) => {
   try {
-    const octokit = getOctokit(req.admin);
+    const octokit = await resolveOctokit(req);
     const repos = await octokit.paginate("GET /user/repos", {
       per_page: 100,
       affiliation: "owner",
@@ -166,7 +176,7 @@ router.delete(
   auth,
   async (req, res) => {
     try {
-      const octokit = getOctokit(req.admin);
+      const octokit = await resolveOctokit(req);
       const { owner, repo, username } = req.params;
       await octokit.request(
         "DELETE /repos/{owner}/{repo}/collaborators/{username}",
@@ -190,7 +200,7 @@ router.delete(
 
 router.post("/collaborators/remove-bulk", auth, async (req, res) => {
   try {
-    const octokit = getOctokit(req.admin);
+    const octokit = await resolveOctokit(req);
     const { username, repos } = req.body;
     const results = [];
 
@@ -230,7 +240,7 @@ router.delete(
   auth,
   async (req, res) => {
     try {
-      const octokit = getOctokit(req.admin);
+      const octokit = await resolveOctokit(req);
       const { owner, repo, invitation_id } = req.params;
       await octokit.request(
         "DELETE /repos/{owner}/{repo}/invitations/{invitation_id}",
@@ -256,7 +266,7 @@ router.put(
   auth,
   async (req, res) => {
     try {
-      const octokit = getOctokit(req.admin);
+      const octokit = await resolveOctokit(req);
       const { owner, repo, username } = req.params;
       const { permission } = req.body;
       await octokit.request(
@@ -281,7 +291,7 @@ router.put(
 
 router.post("/collaborators/remove-bulk-users", auth, async (req, res) => {
   try {
-    const octokit = getOctokit(req.admin);
+    const octokit = await resolveOctokit(req);
     const { usernames, repos } = req.body;
     const results = [];
 

@@ -97,6 +97,26 @@ router.post("/cancel", auth, async (req, res) => {
   }
 });
 
+router.post("/portal", auth, async (req, res) => {
+  try {
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ message: "Stripe not configured" });
+
+    const { subscriptionId } = req.body;
+    const sub = await Subscription.findById(subscriptionId);
+    if (!sub?.stripeCustomerId)
+      return res.status(404).json({ message: "No Stripe customer found" });
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: sub.stripeCustomerId,
+      return_url: `${process.env.CLIENT_URL || "http://localhost:3000"}/billing`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   const stripe = getStripe();
   if (!stripe) return res.sendStatus(400);

@@ -1,5 +1,6 @@
 const express = require("express");
 const Organization = require("../models/Organization");
+const ActivityLog = require("../models/ActivityLog");
 const auth = require("../middleware/auth");
 
 const router = express.Router();
@@ -32,6 +33,11 @@ router.post("/", auth, async (req, res) => {
       owner: req.admin._id,
       members: [{ admin: req.admin._id, role: "owner" }],
     });
+    await ActivityLog.create({
+      action: "org_create",
+      details: `Created organization "${name}"`,
+      performedBy: req.admin._id,
+    });
     res.status(201).json(org);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -63,6 +69,11 @@ router.put("/:id", auth, async (req, res) => {
     if (settings) Object.assign(org.settings, settings);
     if (githubToken !== undefined) org.githubToken = githubToken;
     await org.save();
+    await ActivityLog.create({
+      action: "org_update",
+      details: `Updated organization "${org.name}"`,
+      performedBy: req.admin._id,
+    });
     res.json(org);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -82,6 +93,12 @@ router.post("/:id/members", auth, async (req, res) => {
 
     org.members.push({ admin: adminId, role: "member" });
     await org.save();
+    await ActivityLog.create({
+      action: "org_member_add",
+      details: `Added member to "${org.name}"`,
+      targetUser: adminId,
+      performedBy: req.admin._id,
+    });
     res.json(org);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -99,6 +116,12 @@ router.delete("/:id/members/:adminId", auth, async (req, res) => {
 
     org.members = org.members.filter((m) => m.admin.toString() !== req.params.adminId);
     await org.save();
+    await ActivityLog.create({
+      action: "org_member_remove",
+      details: `Removed member from "${org.name}"`,
+      targetUser: req.params.adminId,
+      performedBy: req.admin._id,
+    });
     res.json(org);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -112,7 +135,13 @@ router.delete("/:id", auth, async (req, res) => {
     if (org.owner.toString() !== req.admin._id.toString())
       return res.status(403).json({ message: "Only the owner can delete" });
 
+    const orgName = org.name;
     await Organization.findByIdAndDelete(req.params.id);
+    await ActivityLog.create({
+      action: "org_delete",
+      details: `Deleted organization "${orgName}"`,
+      performedBy: req.admin._id,
+    });
     res.json({ message: "Organization deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });

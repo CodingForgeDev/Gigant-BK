@@ -9,6 +9,8 @@ const adminSchema = new mongoose.Schema(
     avatar: { data: Buffer, contentType: String },
     role: { type: String, default: "admin", enum: ["superadmin", "admin"] },
     githubToken: { type: String },
+    resetToken: { type: String },
+    resetTokenExpiry: { type: Date },
   },
   { timestamps: true }
 );

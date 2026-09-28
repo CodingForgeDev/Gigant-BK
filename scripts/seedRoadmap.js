@@ -32,6 +32,14 @@ const items = [
   { ticketNumber: "GH-027", title: "Subscription plans management", status: "done", priority: "high", phase: "Phase 5", order: 27 },
   { ticketNumber: "GH-028", title: "Contact form messages inbox", status: "done", priority: "medium", phase: "Phase 5", order: 28 },
   { ticketNumber: "GH-029", title: "Third-party integrations management", status: "done", priority: "medium", phase: "Phase 5", order: 29 },
+  { ticketNumber: "GH-030", title: "Frontend tests — React Testing Library / Vitest", status: "todo", priority: "high", phase: "Phase 6", order: 30 },
+  { ticketNumber: "GH-031", title: "Password reset flow (forgot-password endpoint + page)", status: "done", priority: "high", phase: "Phase 6", order: 31 },
+  { ticketNumber: "GH-032", title: "Avatar upload — admin profile picture UI + API", status: "done", priority: "medium", phase: "Phase 6", order: 32 },
+  { ticketNumber: "GH-033", title: "Org-scoped GitHub tokens — use org token for API calls", status: "done", priority: "high", phase: "Phase 6", order: 33 },
+  { ticketNumber: "GH-034", title: "Stripe customer portal — manage payment methods/invoices", status: "done", priority: "high", phase: "Phase 6", order: 34 },
+  { ticketNumber: "GH-035", title: "CI/CD pipeline — GitHub Actions for lint, test, build, deploy", status: "todo", priority: "high", phase: "Phase 7", order: 35 },
+  { ticketNumber: "GH-036", title: "Rate limiting / API throttling — protect public endpoints", status: "done", priority: "critical", phase: "Phase 6", order: 36 },
+  { ticketNumber: "GH-037", title: "Audit log for org actions — track who added/removed members", status: "done", priority: "high", phase: "Phase 6", order: 37 },
 ];
 
 async function seed() {
